@@ -1,6 +1,5 @@
 # Mathis Richter (mathis.richter@ini.rub.de), 2020
 
-%config IPCompleter.greedy=True
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,7 +43,7 @@ class Node:
             fillcolor = "dodgerblue" if (active) else "w"
             self.circle.set_fc(fillcolor)
             
-    class PreconditionVisualization(Node.Visualization):
+    class PreconditionVisualization(Visualization):
         def __init__(self):
             self.sources = {}
             self.target = ""
