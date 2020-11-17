@@ -1,3 +1,7 @@
+import nxsdk.api.n2a as nx
+
+from dft.visualization import Plotter
+
 # for visualization
 import matplotlib.animation
 from matplotlib import rc
@@ -10,56 +14,44 @@ class StateMachine():
         
     def __init__(self, net):
         
-        query_behavior = False
-
-        # parameters
-        self.NEURONS_PER_NODE = 1
-
         self.net = net
 
         # return values
-
         self.probed_groups = {}   # a dictionary of all compartments that produce output for YARP
         self.out_groups = {}   # a dictionary of all compartments that produce output to other networks on Loihi
 
         self.input_from_yarp = {}  # a dictionary of all compartments that receive input from YARP
         self.input_from_loihi = {}  # a dictionary of all compartments that receive input from other networks on Loihi
 
-        self.behaviors = [None] * 7 # a list of all behaviors (in the order in which they should be plotted)
         self.behavior_dictionary = {}
         
         self.groups = {} # a dictionary of all the compartment groups
 
         behavior_look = self.create_behavior(
             "look",
-            plot_index=0,
             output=self.probed_groups,
             has_subbehaviors=True)
 
         behavior_look_at_object = self.create_behavior(
             "state_machine.look_at_object",
-            plot_index=1,
             cos_names=["done"],
             output=self.probed_groups,
             input=self.input_from_yarp)
 
         behavior_recognize_object = self.create_behavior(
             "state_machine.recognize_object",
-            plot_index=2,
             cos_names=["known", "unknown"],
             output=self.probed_groups,
             input=self.input_from_loihi)
 
         behavior_learn_new_object = self.create_behavior(
             "state_machine.learn_new_object",
-            plot_index=3,
             cos_names=["done"],
             output=self.probed_groups,
             input=self.input_from_yarp)
         
         behavior_dummy = self.create_behavior(
             "state_machine.dummy",
-            plot_index=4,
             cos_names=["done"],
             output=self.probed_groups,
             input=self.input_from_yarp)
@@ -106,13 +98,11 @@ class StateMachine():
 
         behavior_query = self.create_behavior(
             "query",
-            plot_index=5,
             output=self.probed_groups,
             has_subbehaviors=True)
 
         behavior_query_memory = self.create_behavior(
             "state_machine.query_memory",
-            plot_index=6,
             cos_names=["done"],
             output=self.probed_groups,
             input=self.input_from_yarp)
@@ -128,34 +118,62 @@ class StateMachine():
             
         # top node that activates everything if it receives input
         node_look_name = "Node look"
-        node_look = Node(node_look_name, net, self.NEURONS_PER_NODE, biasMant=look_bias, biasExp=7)
+        node_look = Node(node_look_name, net, biasMant=look_bias, biasExp=7)
         self.groups[node_look_name] = node_look
         behavior_look.add_boost(node_look)
         connect(behavior_look.nodes_cos_memory["done"], node_look, synaptic_weight=-1.5 * Node.THRESHOLD)
 
         node_query_name = "Node query"
-        node_query = Node(node_query_name, net, self.NEURONS_PER_NODE, biasMant=query_bias, biasExp=7)
+        node_query = Node(node_query_name, net, biasMant=query_bias, biasExp=7)
         self.groups[node_query_name] = node_query
         behavior_query.add_boost(node_query)
         connect(behavior_query.nodes_cos_memory["done"], node_query, synaptic_weight=-1.5 * Node.THRESHOLD)
         
         # for visualization
-        self.probes = {}
-        for behavior in self.behaviors:
-            if (not behavior.has_subbehaviors):
-                behavior.register_probes(self.probes)
+        #self.probes = {}
+        #for behavior in self.behaviors:
+        #    if (not behavior.has_subbehaviors):
+        #        register_probes(behavior, self.probes)
     
     def create_behavior(self, name, plot_index, cos_names=None, has_subbehaviors=False, output=None, input=None):
-        behavior = Behavior(name, self.net, self.NEURONS_PER_NODE, has_subbehaviors=has_subbehaviors)
-        self.behaviors[plot_index] = behavior
+        behavior = dft.behavior.Behavior(name, self.net, has_subbehaviors=has_subbehaviors)
         
         if (cos_names != None):
             for cos_name in cos_names:
                 behavior.add_cos(cos_name)
         
-        behavior.register(self.groups, self.behavior_dictionary, output=output, input=input)
+        register_behavior(behavior, self.groups, self.behavior_dictionary, output=output, input=input)
         
         return behavior
+
+    def register_behavior(self, behavior, groups, behavior_dictionary, output=None, input=None):
+        behavior_dictionary[behavior.name] = behavior
+        
+        groups[behavior.name + ".prior_intention"] = behavior.node_prior_intention.neurons
+        groups[behavior.name + ".intention"] = behavior.node_intention.neurons
+        
+        if (output != None):
+            output[behavior.name + ".start"] = behavior.node_intention.neurons
+        
+        for key in behavior.nodes_cos.keys():
+            groups[behavior.name + ".cos." + key] = behavior.nodes_cos[key].neurons
+            groups[behavior.name + ".cos_memory." + key] = behavior.nodes_cos_memory[key].neurons
+            
+            if (input != None):
+                input[behavior.name + "." + key] = behavior.nodes_cos[key].neurons
+                
+    #def register_probes(self, behavior, probes):
+    #    probes[behavior.name + ".prior_intention"] = behavior.node_prior_intention.probe_spikes
+    #    probes[behavior.name + ".intention"] = behavior.node_intention.probe_spikes
+    #    
+    #    for name,node in behavior.nodes_cos.items():
+    #        probes[behavior.name + ".cos." + name] = node.probe_spikes
+    #    
+    #    for name,node in behavior.nodes_cos_memory.items():
+    #        probes[behavior.name + ".cos_memory." + name] = node.probe_spikes
+    #        
+    #    for name,node in behavior.preconditions.items():
+    #        probes[behavior.name + ".precondition." + name] = node.probe_spikes
     
     def connect_in(self, out_group):
         cos_weight = 0.6 * Node.THRESHOLD
@@ -168,48 +186,40 @@ class StateMachine():
 
 def create_simulated_input(net, timesteps):
     
-    TIMESTEPS = timesteps
-    NEURONS_PER_NODE = 1
+    neurons_per_node = 1
     
-    inputs = []
     out_groups = {}
-    
     cos_weight = 0.6 * Node.THRESHOLD
     
     cos_look_at_object_done_name = "software.look_at_object.done"
-    cos_look_at_object_done = Input(cos_look_at_object_done_name, net, NEURONS_PER_NODE, TIMESTEPS)
-    cos_look_at_object_done.create_complete_input(TIMESTEPS, 10, 1)
-    inputs.append(cos_look_at_object_done)
+    cos_look_at_object_done = Input(cos_look_at_object_done_name, net, neurons_per_node, timesteps)
+    cos_look_at_object_done.create_complete_input(timesteps, 10, 1)
     out_groups[cos_look_at_object_done_name] = cos_look_at_object_done
     
     cos_recognize_object_known_name = "object_recognition.recognize_object.known"
-    cos_recognize_object_known = Input(cos_recognize_object_known_name, net, NEURONS_PER_NODE, TIMESTEPS)
-    #cos_recognize_object_known.create_complete_input(TIMESTEPS, 17, 1)
-    cos_recognize_object_known.create_empty_input(TIMESTEPS)
-    inputs.append(cos_recognize_object_known)
+    cos_recognize_object_known = Input(cos_recognize_object_known_name, net, neurons_per_node, timesteps)
+    #cos_recognize_object_known.create_complete_input(timesteps, 17, 1)
+    cos_recognize_object_known.create_empty_input(timesteps)
     out_groups[cos_recognize_object_known_name] = cos_recognize_object_known
     
     cos_recognize_object_unknown_name = "object_recognition.recognize_object.unknown"
-    cos_recognize_object_unknown = Input(cos_recognize_object_unknown_name, net, NEURONS_PER_NODE, TIMESTEPS)
-    cos_recognize_object_unknown.create_complete_input(TIMESTEPS, 17, 1)
-    #cos_recognize_object_unknown.create_empty_input(TIMESTEPS)
-    inputs.append(cos_recognize_object_unknown)
+    cos_recognize_object_unknown = Input(cos_recognize_object_unknown_name, net, neurons_per_node, timesteps)
+    cos_recognize_object_unknown.create_complete_input(timesteps, 17, 1)
+    #cos_recognize_object_unknown.create_empty_input(timesteps)
     out_groups[cos_recognize_object_unknown_name] = cos_recognize_object_unknown
     
     cos_learn_new_object_done_name = "software.learn_new_object.done"
-    cos_learn_new_object_done = Input(cos_learn_new_object_done_name, net, NEURONS_PER_NODE, TIMESTEPS)
-    cos_learn_new_object_done.create_complete_input(TIMESTEPS, 25, 1)
-    #cos_learn_new_object_done.create_empty_input(TIMESTEPS)
-    inputs.append(cos_learn_new_object_done)
+    cos_learn_new_object_done = Input(cos_learn_new_object_done_name, net, neurons_per_node, timesteps)
+    cos_learn_new_object_done.create_complete_input(timesteps, 25, 1)
+    #cos_learn_new_object_done.create_empty_input(timesteps)
     out_groups[cos_learn_new_object_done_name] = cos_learn_new_object_done
     
     cos_query_memory_done_name = "software.query_memory.done"
-    cos_query_memory_done = Input(cos_query_memory_done_name, net, NEURONS_PER_NODE, TIMESTEPS)
-    cos_query_memory_done.create_complete_input(TIMESTEPS, 15, 1)
-    inputs.append(cos_query_memory_done)
+    cos_query_memory_done = Input(cos_query_memory_done_name, net, neurons_per_node, timesteps)
+    cos_query_memory_done.create_complete_input(timesteps, 15, 1)
     out_groups[cos_query_memory_done_name] = cos_query_memory_done
     
-    return out_groups, inputs
+    return out_groups
 
 
 
@@ -436,3 +446,33 @@ def create_visualization(all_behaviors, behavior_dictionary, timesteps):
     #display(HTML(animation.to_html5_video()))
     
     animation.save("animation.gif", writer='imagemagick', fps=3)
+
+
+
+def main():
+    TIMESTEPS = 30
+
+    net = nx.NxNet()
+
+    state_machine = StateMachine(net)
+
+    out_groups = create_simulated_input(net, TIMESTEPS)
+    state_machine.connect_in(out_groups)
+
+    net.run(TIMESTEPS)
+    net.disconnect()
+
+    #create_visualization(state_machine.behaviors, state_machine.behavior_dictionary, TIMESTEPS)
+
+    behavior_names = ["look",
+            "state_machine.look_at_object",
+            "state_machine.recognize_object",
+            "state_machine.learn_new_object",
+            "state_machine.dummy",
+            "state_machine.recognize_object",
+            "query",
+            "state_machine.query_memory"]
+
+    #plotter = dft.visualization.Plotter()
+    #for name in behavior_names:
+    #    plotter.plot_behavior(state_machine.behavior_dictionary[name])
