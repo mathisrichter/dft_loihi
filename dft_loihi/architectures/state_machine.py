@@ -1,6 +1,7 @@
 import nxsdk.api.n2a as nx
 
-from dft.visualization import Plotter
+from dft_loihi.visualization.plotting import Plotter
+from dft_loihi.dft.behavior import Behavior
 
 # for visualization
 import matplotlib.animation
@@ -135,8 +136,8 @@ class StateMachine():
         #    if (not behavior.has_subbehaviors):
         #        register_probes(behavior, self.probes)
     
-    def create_behavior(self, name, plot_index, cos_names=None, has_subbehaviors=False, output=None, input=None):
-        behavior = dft.behavior.Behavior(name, self.net, has_subbehaviors=has_subbehaviors)
+    def create_behavior(self, name, cos_names=None, has_subbehaviors=False, output=None, input=None):
+        behavior = dft_loihi.dft.behavior.Behavior(name, self.net, has_subbehaviors=has_subbehaviors)
         
         if (cos_names != None):
             for cos_name in cos_names:
