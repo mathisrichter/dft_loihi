@@ -1,13 +1,17 @@
-import nxsdk.api.n2a as nx
+import nxsdk
+import nxsdk.net.net
 
 from dft_loihi.visualization.plotting import Plotter
 from dft_loihi.dft.behavior import Behavior
+from dft_loihi.dft.node import Node
+from dft_loihi.inputs.simulated_input import SimulatedInput
+from dft_loihi.dft.util import connect
 
 # for visualization
 import matplotlib.animation
-from matplotlib import rc
-from IPython.display import HTML, Image, display
-rc('animation', html='html5')
+#from matplotlib import rc
+#from IPython.display import HTML, Image, display
+#rc('animation', html='html5')
 #matplotlib.pyplot.rcParams['animation.convert_path'] = '/homes/mathis.richter/programs/imagemagick_install/bin/magick'
 
 
@@ -59,7 +63,7 @@ class StateMachine():
         # make this dummy behavior instantly create its own CoS signal
         connect(behavior_dummy.node_intention,
                 behavior_dummy.nodes_cos["done"],
-                synaptic_weight=1.1 * Node.THRESHOLD)
+                1.1)
 
     
         behavior_look.add_subbehaviors([behavior_look_at_object, behavior_recognize_object])
@@ -111,6 +115,8 @@ class StateMachine():
         behavior_query.add_subbehaviors([behavior_query_memory])
         
 
+        query_behavior = False
+
         look_bias = 100
         query_bias = 0
         if (query_behavior):
@@ -122,13 +128,13 @@ class StateMachine():
         node_look = Node(node_look_name, net, biasMant=look_bias, biasExp=7)
         self.groups[node_look_name] = node_look
         behavior_look.add_boost(node_look)
-        connect(behavior_look.nodes_cos_memory["done"], node_look, synaptic_weight=-1.5 * Node.THRESHOLD)
+        connect(behavior_look.nodes_cos_memory["done"], node_look, -1.5)
 
         node_query_name = "Node query"
         node_query = Node(node_query_name, net, biasMant=query_bias, biasExp=7)
         self.groups[node_query_name] = node_query
         behavior_query.add_boost(node_query)
-        connect(behavior_query.nodes_cos_memory["done"], node_query, synaptic_weight=-1.5 * Node.THRESHOLD)
+        connect(behavior_query.nodes_cos_memory["done"], node_query, -1.5)
         
         # for visualization
         #self.probes = {}
@@ -137,13 +143,13 @@ class StateMachine():
         #        register_probes(behavior, self.probes)
     
     def create_behavior(self, name, cos_names=None, has_subbehaviors=False, output=None, input=None):
-        behavior = dft_loihi.dft.behavior.Behavior(name, self.net, has_subbehaviors=has_subbehaviors)
+        behavior = Behavior(name, self.net, has_subbehaviors=has_subbehaviors)
         
         if (cos_names != None):
             for cos_name in cos_names:
                 behavior.add_cos(cos_name)
         
-        register_behavior(behavior, self.groups, self.behavior_dictionary, output=output, input=input)
+        self.register_behavior(behavior, self.groups, self.behavior_dictionary, output=output, input=input)
         
         return behavior
 
@@ -177,46 +183,45 @@ class StateMachine():
     #        probes[behavior.name + ".precondition." + name] = node.probe_spikes
     
     def connect_in(self, out_group):
-        cos_weight = 0.6 * Node.THRESHOLD
+        cos_weight = 0.6
 
-        connect(out_group["software.look_at_object.done"], self.input_from_yarp["state_machine.look_at_object.done"], synaptic_weight=cos_weight)
-        connect(out_group["object_recognition.recognize_object.known"], self.input_from_loihi["state_machine.recognize_object.known"], synaptic_weight=cos_weight)
-        connect(out_group["object_recognition.recognize_object.unknown"], self.input_from_loihi["state_machine.recognize_object.unknown"], synaptic_weight=cos_weight)
-        connect(out_group["software.learn_new_object.done"], self.input_from_yarp["state_machine.learn_new_object.done"], synaptic_weight=cos_weight)
-        connect(out_group["software.query_memory.done"], self.input_from_yarp["state_machine.query_memory.done"], synaptic_weight=cos_weight)
+        connect(out_group["software.look_at_object.done"], self.input_from_yarp["state_machine.look_at_object.done"], cos_weight)
+        connect(out_group["object_recognition.recognize_object.known"], self.input_from_loihi["state_machine.recognize_object.known"], cos_weight)
+        connect(out_group["object_recognition.recognize_object.unknown"], self.input_from_loihi["state_machine.recognize_object.unknown"], cos_weight)
+        connect(out_group["software.learn_new_object.done"], self.input_from_yarp["state_machine.learn_new_object.done"], cos_weight)
+        connect(out_group["software.query_memory.done"], self.input_from_yarp["state_machine.query_memory.done"], cos_weight)
 
 def create_simulated_input(net, timesteps):
     
     neurons_per_node = 1
     
     out_groups = {}
-    cos_weight = 0.6 * Node.THRESHOLD
     
     cos_look_at_object_done_name = "software.look_at_object.done"
-    cos_look_at_object_done = Input(cos_look_at_object_done_name, net, neurons_per_node, timesteps)
+    cos_look_at_object_done = SimulatedInput(cos_look_at_object_done_name, net, neurons_per_node, timesteps)
     cos_look_at_object_done.create_complete_input(timesteps, 10, 1)
     out_groups[cos_look_at_object_done_name] = cos_look_at_object_done
     
     cos_recognize_object_known_name = "object_recognition.recognize_object.known"
-    cos_recognize_object_known = Input(cos_recognize_object_known_name, net, neurons_per_node, timesteps)
+    cos_recognize_object_known = SimulatedInput(cos_recognize_object_known_name, net, neurons_per_node, timesteps)
     #cos_recognize_object_known.create_complete_input(timesteps, 17, 1)
     cos_recognize_object_known.create_empty_input(timesteps)
     out_groups[cos_recognize_object_known_name] = cos_recognize_object_known
     
     cos_recognize_object_unknown_name = "object_recognition.recognize_object.unknown"
-    cos_recognize_object_unknown = Input(cos_recognize_object_unknown_name, net, neurons_per_node, timesteps)
+    cos_recognize_object_unknown = SimulatedInput(cos_recognize_object_unknown_name, net, neurons_per_node, timesteps)
     cos_recognize_object_unknown.create_complete_input(timesteps, 17, 1)
     #cos_recognize_object_unknown.create_empty_input(timesteps)
     out_groups[cos_recognize_object_unknown_name] = cos_recognize_object_unknown
     
     cos_learn_new_object_done_name = "software.learn_new_object.done"
-    cos_learn_new_object_done = Input(cos_learn_new_object_done_name, net, neurons_per_node, timesteps)
+    cos_learn_new_object_done = SimulatedInput(cos_learn_new_object_done_name, net, neurons_per_node, timesteps)
     cos_learn_new_object_done.create_complete_input(timesteps, 25, 1)
     #cos_learn_new_object_done.create_empty_input(timesteps)
     out_groups[cos_learn_new_object_done_name] = cos_learn_new_object_done
     
     cos_query_memory_done_name = "software.query_memory.done"
-    cos_query_memory_done = Input(cos_query_memory_done_name, net, neurons_per_node, timesteps)
+    cos_query_memory_done = SimulatedInput(cos_query_memory_done_name, net, neurons_per_node, timesteps)
     cos_query_memory_done.create_complete_input(timesteps, 15, 1)
     out_groups[cos_query_memory_done_name] = cos_query_memory_done
     
@@ -453,7 +458,7 @@ def create_visualization(all_behaviors, behavior_dictionary, timesteps):
 def main():
     TIMESTEPS = 30
 
-    net = nx.NxNet()
+    net = nxsdk.net.net.NxNet()
 
     state_machine = StateMachine(net)
 
@@ -474,6 +479,6 @@ def main():
             "query",
             "state_machine.query_memory"]
 
-    #plotter = dft.visualization.Plotter()
-    #for name in behavior_names:
-    #    plotter.plot_behavior(state_machine.behavior_dictionary[name])
+    plotter = Plotter()
+    for name in behavior_names:
+        plotter.plot_behavior(state_machine.behavior_dictionary[name])

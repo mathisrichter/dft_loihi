@@ -1,4 +1,7 @@
-class Input:
+import numpy as np
+import dft_loihi.dft.util
+
+class SimulatedInput(dft_loihi.dft.util.Connectable):
     """
     An artificial spike pattern that can be used as an input to nodes.
     The pattern can be shaped by specifying phases of time in which all neurons have a certain probability of spiking at every time step.
@@ -20,7 +23,10 @@ class Input:
         self.spike_times = []
         self.input_phases = []
         
-        self.input = net.createSpikeGenProcess(numPorts=self.number_of_neurons)
+        self.simulated_input = net.createSpikeGenProcess(numPorts=self.number_of_neurons)
+
+        # for connections
+        self.output = self.simulated_input
         
     def add_input_phase_probability(self, length, spiking_probability):
         """Adds a phase with a given length in time steps, during which each neuron has a given probability to spike at every time step.
@@ -60,7 +66,7 @@ class Input:
         for i in range(self.number_of_neurons):
             st = np.where(concatenated_phases[i,:])[0].tolist()
             self.spike_times.append(st)
-            self.input.addSpikes(spikeInputPortNodeIds=i, spikeTimes=st)
+            self.simulated_input.addSpikes(spikeInputPortNodeIds=i, spikeTimes=st)
        
     def create_empty_input(self, length):
         self.input_phases.append(np.zeros((self.number_of_neurons, length)))

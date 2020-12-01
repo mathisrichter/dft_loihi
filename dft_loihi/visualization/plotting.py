@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 class Plotter():
     def __init__(self, figsize=(18,3)):
         self.figsize = figsize
@@ -14,28 +16,28 @@ class Plotter():
         plt.tight_layout()
         plt.show()
 
-    def plot_node(self, name, node_probes):
+    def plot_node(self, node):
         """Creates plots for all probes of the node."""
-        if (self.probe_current == None or self.probe_voltage == None or self.probe_spikes == None):
+        if (node.probe_current == None or node.probe_voltage == None or node.probe_spikes == None):
             print("Error: Node does not have all necessary probes to plot.")
         else:
             fig = plt.figure(figsize=(18,10))
-            fig.suptitle(self.name)
+            fig.suptitle(node.name)
 
             ax0 = plt.subplot(3,1,1)
-            self.probe_current.plot()
+            node.probe_current.plot()
             plt.xlabel('Time steps')
             plt.ylabel('Current')
             plt.title('Current')
 
             ax1 = plt.subplot(3,1,2)
-            self.probe_voltage.plot()
+            node.probe_voltage.plot()
             plt.xlabel('Time steps')
             plt.ylabel('Voltage')
             plt.title('Voltage')
 
             ax2 = plt.subplot(3,1,3)
-            self.probe_spikes.plot()
+            node.probe_spikes.plot()
             plt.xlabel('Time steps')
             plt.ylabel('Neuron index')
             plt.title('Spikes')
@@ -46,11 +48,11 @@ class Plotter():
             plt.tight_layout()
             plt.show()
 
-    def plot_behavior(self):
+    def plot_behavior(self, behavior):
         """Sets up plots for all nodes of the behavior."""
-        print(self.name)
-        self.node_prior_intention.plot()
-        self.node_intention.plot()
-        for name in self.nodes_cos:
-            self.nodes_cos[name].plot()
-            self.nodes_cos_memory[name].plot()
+        print(behavior.name)
+        self.plot_node(behavior.node_prior_intention)
+        self.plot_node(behavior.node_intention)
+        for name in behavior.nodes_cos:
+            self.plot_node(behavior.nodes_cos[name])
+            self.plot_node(behavior.nodes_cos_memory[name])

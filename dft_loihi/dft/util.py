@@ -1,25 +1,33 @@
+import numpy as np
+import nxsdk
+
+from dft_loihi import dft, inputs
+
+
 def decay(tau):
     return int(4095 / tau)
 
-def connect(source, target, synaptic_weight=1.1 * Node.THRESHOLD):
-    """Connects a node (or an input) to another node."""
+class Connectable:
+    def __init__(self):
+        self.input = None
+        self.output = None
 
-    source_population = None
-    mark = None
-    
-    if isinstance(source, Node):
-        source_population = source.neurons
-        mask = np.full((source.number_of_neurons, target.number_of_neurons), 1.0)
-    elif isinstance(source, Input):
-        source_population = source.input
-        mask = np.eye(source.number_of_neurons)
+    def weight_transform(self, weight):
+        return weight
+
+def connect(source, target, weight):
+
+    if isinstance(source, nxsdk.net.groups.CompartmentGroup):
+        source_output = source
+    else:
+        source_output = source.output
+
+    synaptic_weight = weight
+    if isinstance(target, nxsdk.net.groups.CompartmentGroup):
+        target_input = target
+    else:
+        target_input = target.input
+        synaptic_weight = target.weight_transform(weight)
 
     prototype = nxsdk.net.nodes.connections.ConnectionPrototype(weight=synaptic_weight)
-        
-    if isinstance(target, Node):
-        source_population.connect(target.neurons,
-                                  prototype=prototype,
-                                  connectionMask=mask)
-    else:
-        source_population.connect(target,
-                                 prototype=prototype)
+    source_output.connect(target_input, prototype=prototype)
