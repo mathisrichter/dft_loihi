@@ -19,7 +19,7 @@ net = nxsdk.net.net.NxNet()
 simulated_input = SimulatedInput("input", net, neurons_per_node, timesteps)
 simulated_input.add_input_phase_spike_rate(100, 0.0)
 simulated_input.add_input_phase_spike_rate(100, 40)
-simulated_input.add_input_phase_spike_rate(100, 50)
+simulated_input.add_input_phase_spike_rate(100, 55)
 simulated_input.add_input_phase_spike_rate(100, 40)
 simulated_input.add_input_phase_spike_rate(100, 0.0)
 simulated_input.create_input()
@@ -29,7 +29,7 @@ node = Node("node",
             number_of_neurons=neurons_per_node,
             tau_voltage=2,
             tau_current=10,
-            self_excitation=0.08)
+            self_excitation=0.10)
 
 connect(simulated_input, node, 0.5, pattern="one-to-one")
 

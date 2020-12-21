@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import dft_loihi.dft.util
 
@@ -36,6 +37,16 @@ class SimulatedInput(dft_loihi.dft.util.Connectable):
         spiking_probability --- The probability of a neuron to spike at any tim step within the phase [0,1]. Same for all neurons."""
         spikes = np.random.rand(self.number_of_neurons, length) < spiking_probability
         self.input_phases.append(spikes)
+
+    def add_input_phase_spike_rate(self, length, spike_rate):
+        """Spike rate is in Hz (spikes per minute)."""
+        time_steps_per_minute = 600
+
+        if (spike_rate == 0.0):
+            spike_distance = sys.maxsize
+        else:
+            spike_distance = round(time_steps_per_minute / spike_rate)
+        self.add_input_phase_spike_distance(length, spike_distance)
     
     def add_input_phase_spike_distance(self, length, spike_distance):
         """Adds a phase with a given length in time steps, during which each neuron spikes at regular intervales of spike_distance.

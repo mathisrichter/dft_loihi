@@ -25,8 +25,8 @@ General questions
 
 0D
 ----------------
-- detection, hysteresis             
-- self-sustained                    
+- detection, reverse detection, hysteresis                  WORKING
+- self-sustained                                            WORKING
 
 
 1D
