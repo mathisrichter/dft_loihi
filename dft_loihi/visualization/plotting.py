@@ -1,10 +1,53 @@
 import matplotlib.pyplot as plt
+from nxsdk.utils.plotutils import plotRaster
+
+
+
+
+import matplotlib
+# Make sure that we are using QT5
+matplotlib.use('Qt5Agg')
+import matplotlib.pyplot as plt
+from PyQt5 import QtWidgets
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
+class ScrollableWindow(QtWidgets.QMainWindow):
+    def __init__(self, fig):
+        self.qapp = QtWidgets.QApplication([])
+
+        QtWidgets.QMainWindow.__init__(self)
+        self.widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.widget)
+        self.widget.setLayout(QtWidgets.QVBoxLayout())
+        self.widget.layout().setContentsMargins(0,0,0,0)
+        self.widget.layout().setSpacing(0)
+
+        self.fig = fig
+        self.canvas = FigureCanvas(self.fig)
+        self.canvas.draw()
+        self.scroll = QtWidgets.QScrollArea(self.widget)
+        self.scroll.setWidget(self.canvas)
+
+        self.nav = NavigationToolbar(self.canvas, self.widget)
+        self.widget.layout().addWidget(self.nav)
+        self.widget.layout().addWidget(self.scroll)
+
+        self.show()
+        exit(self.qapp.exec_()) 
 
 class Plotter():
     def __init__(self, figsize=(18,3)):
         self.figsize = figsize
 
-    def plot_input(self, input):
+    def plot(self):
+        pass
+
+        # TODO
+        # create a grid layout of subplots or something;
+        # put all registered plots into that grid
+
+    def add_input_plot(self, input):
         """Create a plot of the spike pattern of the input over time."""
         fig = plt.figure(figsize=self.figsize)
         fig.suptitle(input.name)
@@ -15,8 +58,9 @@ class Plotter():
         plt.title('Source Spikes')
         plt.tight_layout()
         plt.show()
+        #a = ScrollableWindow(fig)
 
-    def plot_node(self, node):
+    def add_node_plot(self, node):
         """Creates plots for all probes of the node."""
         if (node.probe_current == None or node.probe_voltage == None or node.probe_spikes == None):
             print("Error: Node does not have all necessary probes to plot.")
@@ -48,7 +92,7 @@ class Plotter():
             plt.tight_layout()
             plt.show()
 
-    def plot_behavior(self, behavior):
+    def add_behavior_plot(self, behavior):
         """Sets up plots for all nodes of the behavior."""
         print(behavior.name)
         self.plot_node(behavior.node_prior_intention)
