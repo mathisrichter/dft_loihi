@@ -54,7 +54,7 @@ class Plotter():
         plotRaster(input.spike_times)
         plt.xlabel('Time steps')
         plt.ylabel('Input index')
-        plt.xlim(0, input.number_of_timesteps)
+        plt.xlim(0, input.number_of_time_steps)
         plt.title('Source Spikes')
         plt.tight_layout()
         plt.show()

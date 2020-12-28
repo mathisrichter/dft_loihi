@@ -1,6 +1,115 @@
 import sys
 import numpy as np
+import scipy.stats
 import dft_loihi.dft.util
+from dft_loihi.dft.util import time_steps_per_minute
+
+
+def gauss(domain, shape, amplitude=1.0, mean=None, stddev=None):
+    if type(shape) == int:
+        domain = np.array([domain], dtype=np.int32)
+        shape = (shape,)
+        stddev = [stddev]
+
+    ndim = len(shape)
+
+    # Mean is zero by default
+    if mean is not None:
+        mean = mean
+    else:
+        mean = np.zeros(ndim, dtype=np.float32)
+
+    # Stddev is 1 in each dimension by default
+    if stddev is None:
+        stddev = np.ones(ndim, dtype=np.float32)
+
+    # Assemble a set of linear spaces
+    linspaces = []
+    for i in range(0, ndim):
+        linspaces.append(np.linspace(domain[i][0], domain[i][1], shape[i], endpoint=True, dtype=np.float32))
+    linspaces = np.array(linspaces)
+
+    # Combine linear spaces into meshgrid
+    mgrid = np.array(np.meshgrid(*linspaces))
+
+    # Reshape meshgrid
+    pos = np.zeros(shape + (len(domain),), dtype=np.float32)
+    for i in range(0, ndim):
+        if ndim == 1:
+            pos[:, i] = mgrid[i, :]
+        elif ndim == 2:
+            pos[:, :, i] = mgrid[i, :, :]
+        elif ndim == 3:
+            pos[:, :, :, i] = mgrid[i, :, :, :]
+        elif ndim == 4:
+            pos[:, :, :, :, i] = mgrid[i, :, :, :, :]
+
+    # Define multivariate distribution over meshgrid
+    unnormalized = scipy.stats.multivariate_normal.pdf(
+        pos,
+        mean=mean,
+        cov=stddev)
+
+    normalized = unnormalized / np.max(unnormalized)
+    result = normalized * amplitude
+
+    return result
+
+
+class GaussInput(dft_loihi.dft.util.Connectable):
+    def __init__(self, name, net, domain, shape):
+        self.name = name
+
+        if type(shape) == int:
+            domain = np.array([domain], dtype=np.int32)
+            shape = (shape,)
+
+        self.domain = domain
+        self.shape = shape
+        self.number_of_neurons = int(np.prod(self.shape))
+        self.gauss_input = net.createSpikeGenProcess(numPorts=self.number_of_neurons)
+
+        self.spikes = np.empty((self.number_of_neurons, 0))
+        self.spike_times = []  # for plotting
+        self.number_of_time_steps = 0
+
+        # for connections
+        self.output = self.gauss_input
+
+    def add_input_phase(self, max_spike_rate, center, width, duration):
+        if type(center) == float or type(center) == int:
+            center = [center]
+            width = [width]
+
+        assert len(center) == len(self.shape)
+        assert len(width) == len(self.shape)
+
+        spike_rate_per_time_step = max_spike_rate / time_steps_per_minute
+        spike_rates = gauss(self.domain,
+                            self.shape,
+                            spike_rate_per_time_step,
+                            center,
+                            width)
+
+        spike_rates = spike_rates.flatten()
+        spike_rates = np.asarray([spike_rates, ])
+
+        spikes = np.random.poisson(spike_rates.T, (self.number_of_neurons, duration))
+        spikes = np.where(spikes > 0, 1, spikes)
+
+        self.spikes = np.append(self.spikes, spikes, axis=1)
+
+    def create_input(self):
+        """Creates the overall time course of the input.
+        Make sure to only call this once you have added all phases of input with the add_input_phase() function."""
+
+        for i in range(self.number_of_neurons):
+            spike_times = np.nonzero(self.spikes[i, :])[0].tolist()
+            self.spike_times.append(spike_times)
+            self.gauss_input.addSpikes(spikeInputPortNodeIds=i, spikeTimes=spike_times)
+
+        self.number_of_time_steps = np.size(self.spikes, axis=1)
+
 
 class SimulatedInput(dft_loihi.dft.util.Connectable):
     """

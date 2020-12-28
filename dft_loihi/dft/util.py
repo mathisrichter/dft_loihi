@@ -1,8 +1,11 @@
 import numpy as np
 import nxsdk
 
-from dft_loihi import dft, inputs
 
+ms_per_time_step = 10
+time_steps_per_ms = 1 / ms_per_time_step
+time_steps_per_second = 1000 * time_steps_per_ms
+time_steps_per_minute = 60 * time_steps_per_second
 
 def decay(tau):
     return int(4095 / tau)
