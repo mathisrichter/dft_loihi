@@ -19,16 +19,16 @@ field_domain = [-5, 5]
 field_shape = 15
 
 gauss_input = PiecewiseStaticInput("input", net, domain=field_domain, shape=field_shape)
-gauss_input.add_gaussian_spike_rate(60, -2.5, 1.5, 100)
-gauss_input.add_gaussian_spike_rate(1600, -2.5, 1.5, 100)
-gauss_input.add_gaussian_spike_rate(2000, -2.5, 1.5, 100)
-gauss_input.add_gaussian_spike_rate(1600, -2.5, 1.5, 100)
-gauss_input.add_gaussian_spike_rate(60, -2.5, 1.5, 100)
+gauss_input.add_gaussian_spike_rate(0, -2.5, 1.5, 100)
+gauss_input.add_gaussian_spike_rate(800, -2.5, 1.5, 100)
+gauss_input.add_gaussian_spike_rate(11200, -2.5, 1.5, 100)
+gauss_input.add_gaussian_spike_rate(800, -2.5, 1.5, 100)
+gauss_input.add_gaussian_spike_rate(0, -2.5, 1.5, 100)
 gauss_input.create()
 
-kernel = MultiPeakKernel(amp_exc=0.5,
-                         width_exc=2.0,
-                         amp_inh=-0.4,
+kernel = MultiPeakKernel(amp_exc=0.485,
+                         width_exc=2.5,
+                         amp_inh=-0.35,
                          width_inh=4.0,
                          border_type="zeros")
 
@@ -38,9 +38,10 @@ field = Field("field",
               shape=field_shape,
               kernel=kernel,
               tau_voltage=2,
-              tau_current=10)
+              tau_current=10,
+              delay=3)
 
-connect(gauss_input, field, 0.5, mask="one-to-one")
+connect(gauss_input, field, 0.1, mask="one-to-one")
 
 # run the network
 net.run(timesteps)
@@ -49,5 +50,5 @@ net.disconnect()
 # plot results
 plotter = Plotter()
 plotter.add_input_plot(gauss_input)
-plotter.add_node_plot(field)
+plotter.add_field_plot(field)
 plotter.plot()

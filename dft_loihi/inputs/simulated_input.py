@@ -69,7 +69,7 @@ class SimulatedInput(dft_loihi.dft.util.Connectable):
     After creating the input object, add a number of input phases (add_input_phase function) and then create the overall input time couse (create_input() function.
     """
     
-    def __init__(self, name, net, number_of_neurons, number_of_timesteps):
+    def __init__(self, name, net, number_of_neurons, number_of_time_steps):
         """Constructor
         
         Parameters:
@@ -79,7 +79,7 @@ class SimulatedInput(dft_loihi.dft.util.Connectable):
         number_of_timesteps --- The total number of time steps over which the input time course will be generated."""
         self.name = name
         self.number_of_neurons = number_of_neurons
-        self.number_of_timesteps = number_of_timesteps
+        self.number_of_time_steps = number_of_time_steps
         self.spike_times = []
         self.input_phases = []
         

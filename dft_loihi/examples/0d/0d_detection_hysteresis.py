@@ -31,7 +31,7 @@ node = Node("node",
             tau_current=10,
             self_excitation=0.08)
 
-connect(simulated_input, node, 0.5, pattern="one-to-one")
+connect(simulated_input, node, 0.5, mask="one-to-one")
 
 ### run the network
 net.run(timesteps)
@@ -40,5 +40,5 @@ net.disconnect()
 ### plot results
 plotter = Plotter()
 plotter.add_input_plot(simulated_input)
-plotter.add_node_plot(node)
+plotter.add_field_plot(node)
 plotter.plot()

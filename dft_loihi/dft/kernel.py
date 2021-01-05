@@ -2,7 +2,69 @@ import numpy as np
 from dft_loihi.dft.util import gauss, shift_fill
 
 
-class MultiPeakKernel:
+class Kernel:
+    def __init__(self):
+        self.weights = None
+        self.mask = None
+
+
+class SelectiveKernel(Kernel):
+    """A kernel that enables creating a selective dynamic neural field
+    (local excitation, global inhibition)."""
+
+    def __init__(self,
+                 amp_exc=1.0,
+                 width_exc=1.0,
+                 center_exc=0.0,
+                 global_inh=1.0,
+                 border_type="inhibition"):
+        super.__init__(self)
+
+        if type(amp_exc) == float or type(amp_exc) == int:
+            amp_exc = (amp_exc,)
+            width_exc = np.array([width_exc], dtype=np.float32)
+            center_exc = np.array([center_exc], dtype=np.float32)
+            border_type = [border_type]
+
+        self.amp_exc = amp_exc
+        self.width_exc = width_exc
+        self.center_exc = center_exc
+        self.global_inh = global_inh
+        self.border_type = border_type
+
+    def estimate_domain_shape(self, field_domain, field_shape, center, width):
+        sampling = (field_domain[:, 1] - field_domain[:, 0]) / field_shape[:]
+        # estimate the shape of the kernel
+        kernel_shape = np.uint(np.ceil(2 * self.limit * width / sampling))
+        # ensure that the kernel has an odd size
+        kernel_shape = np.where(kernel_shape % 2 == 0, kernel_shape + 1, kernel_shape)
+
+        # compute the domain of the kernel
+        kernel_domain = np.zeros(field_domain.shape)
+        half_domain = kernel_shape * sampling / 2.0
+        kernel_domain[:, 0] = center - half_domain
+        kernel_domain[:, 1] = center + half_domain
+
+        return kernel_domain, tuple(kernel_shape)
+
+    def create(self, field_domain, field_shape):
+        # compute domain and shape of the excitatory kernel
+        domain_exc, shape_exc = self.estimate_domain_shape(field_domain,
+                                                           field_shape,
+                                                           self.center_exc,
+                                                           self.width_exc)
+
+        print("domain exc: " + str(domain_exc))
+        print("shape exc: " + str(shape_exc))
+
+        local_excitation = gauss(domain_exc,
+                                 shape_exc,
+                                 self.amp_exc,
+                                 self.center_exc,
+                                 self.width_exc)
+
+
+class MultiPeakKernel(Kernel):
     """A class that enables configuring a "Mexican hat" kernel
     (local excitation and mid-range inhibition) that enables
     multiple peaks within a field."""
@@ -34,9 +96,6 @@ class MultiPeakKernel:
         self.center_inh = center_inh
         self.limit = limit
         self.border_type = border_type
-
-        self.weights = None
-        self.mask = None
 
         assert len(self.width_exc) == len(self.width_inh) and \
                len(self.center_exc) == len(self.center_inh), \

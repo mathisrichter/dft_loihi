@@ -47,7 +47,7 @@ class Node(dft_loihi.dft.util.Connectable):
         self.output = self.neurons
         
         if (self_excitation > 0.001):
-            dft_loihi.dft.util.connect(self, self, self_excitation, pattern="full")
+            dft_loihi.dft.util.connect(self, self, self_excitation, mask="full")
 #            connection_prototype_recurrent = nxsdk.net.nodes.connections.ConnectionPrototype(weight=self_excitation * self.threshold)
 #            self.neurons.connect(self.neurons, prototype=connection_prototype_recurrent, connectionMask=np.ones((self.number_of_neurons, self.number_of_neurons)))
         

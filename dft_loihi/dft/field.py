@@ -17,6 +17,7 @@ class Field(dft_loihi.dft.util.Connectable):
             tau_voltage=1,
             tau_current=1,
             threshold=100,
+            delay=1,
             with_probes=True):
         super().__init__()
         self.name = name
@@ -28,6 +29,7 @@ class Field(dft_loihi.dft.util.Connectable):
         self.shape = shape
 
         self.threshold = threshold
+        self.delay = delay
         self.number_of_neurons = np.prod(shape)  # multiplies the sizes of all dimensions
 
         compartment_prototype = nxsdk.net.nodes.compartments.CompartmentPrototype(
@@ -35,7 +37,7 @@ class Field(dft_loihi.dft.util.Connectable):
                               compartmentVoltageDecay=dft_loihi.dft.util.decay(tau_voltage),
                               compartmentCurrentDecay=dft_loihi.dft.util.decay(tau_current),
                               enableNoise=0,
-                              refractoryDelay=1,
+                              refractoryDelay=self.delay,
                               functionalState=nxsdk.api.enums.api_enums.COMPARTMENT_FUNCTIONAL_STATE.IDLE)
 
         self.neurons = net.createCompartmentGroup(size=self.number_of_neurons, prototype=compartment_prototype)
