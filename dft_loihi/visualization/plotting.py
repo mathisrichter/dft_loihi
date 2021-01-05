@@ -1,16 +1,11 @@
 import matplotlib.pyplot as plt
 from nxsdk.utils.plotutils import plotRaster
 
-
-
-
-import matplotlib
-# Make sure that we are using QT5
-matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from PyQt5 import QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+
 
 class ScrollableWindow(QtWidgets.QMainWindow):
     def __init__(self, fig):

@@ -11,18 +11,24 @@ class Field(dft_loihi.dft.util.Connectable):
             self,
             name,
             net,
-            sizes,
+            domain,
+            shape,
             kernel=None,
             tau_voltage=1,
             tau_current=1,
             threshold=100,
-            with_probes=True,
-            bias_mant=0,
-            bias_exp=0):
+            with_probes=True):
         super().__init__()
         self.name = name
+
+        if type(shape) == int:
+            domain = np.array([domain], dtype=np.float32)
+            shape = (shape,)
+        self.domain = domain
+        self.shape = shape
+
         self.threshold = threshold
-        self.number_of_neurons = np.prod(sizes)  # multiplies the sizes of all dimensions
+        self.number_of_neurons = np.prod(shape)  # multiplies the sizes of all dimensions
 
         compartment_prototype = nxsdk.net.nodes.compartments.CompartmentPrototype(
                               vThMant=self.threshold,
@@ -30,19 +36,17 @@ class Field(dft_loihi.dft.util.Connectable):
                               compartmentCurrentDecay=dft_loihi.dft.util.decay(tau_current),
                               enableNoise=0,
                               refractoryDelay=1,
-                              biasMant=bias_mant,
-                              biasExp=bias_exp,
                               functionalState=nxsdk.api.enums.api_enums.COMPARTMENT_FUNCTIONAL_STATE.IDLE)
 
         self.neurons = net.createCompartmentGroup(size=self.number_of_neurons, prototype=compartment_prototype)
         self.input = self.neurons
         self.output = self.neurons
-        
-        #if (self_excitation > 0.001):
-        #    dft_loihi.dft.util.connect(self, self, self_excitation, pattern="full")
-#       #     connection_prototype_recurrent = nxsdk.net.nodes.connections.ConnectionPrototype(weight=self_excitation * self.threshold)
-#       #     self.neurons.connect(self.neurons, prototype=connection_prototype_recurrent, connectionMask=np.ones((self.number_of_neurons, self.number_of_neurons)))
-        
+
+        if (kernel is not None):
+            kernel.create(self.domain, self.shape)
+            print("kernel: " + str(kernel.weights))
+            dft_loihi.dft.util.connect(self, self, kernel.weights, mask=kernel.mask)
+
         if (with_probes):
             self.setup_probes()
  
