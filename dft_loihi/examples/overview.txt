@@ -33,7 +33,7 @@ General questions
 ----------------
 - detection, reverse detection, hysteresis                  WORKING
 - multi peak, detection                                     WORKING
-- multi peak, peak fusion           
+- multi peak, peak fusion                                   WORKING
 - multi peak, sustained                                     WORKING
 - multi peak, sustained, repulsion                          WORKING
 - multi peak, sustained, tracking                           WORKING
