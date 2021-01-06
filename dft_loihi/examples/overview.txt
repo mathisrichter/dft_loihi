@@ -26,18 +26,20 @@ General questions
 0D
 ----------------
 - detection, reverse detection, hysteresis                  WORKING
-- self-sustained                                            WORKING
+- sustained                                                 WORKING
 
 
 1D
 ----------------
-- multi peak                        
+- detection, reverse detection, hysteresis                  WORKING
+- multi peak, detection                                     WORKING
 - multi peak, peak fusion           
-- selection, hysteresis             
-- sustained, multi peak, repulsion  
-- sustained, selection              
-- sustained, tracking               
-
+- multi peak, sustained                                     WORKING
+- multi peak, sustained, repulsion
+- multi peak, sustained, tracking
+- selection, hysteresis
+- selection, sustained                                      WORKING
+- selection, sustained, tracking
 
 2D
 ----------------

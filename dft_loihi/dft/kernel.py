@@ -1,11 +1,64 @@
+from abc import ABC, abstractmethod
 import numpy as np
 from dft_loihi.dft.util import gauss, shift_fill
 
 
-class Kernel:
+class Kernel(ABC):
     def __init__(self):
         self.weights = None
         self.mask = None
+
+    def compute_mask(self, weights):
+        return np.where(weights == 0, 0, 1)
+
+    def compute_weights(self, kernel_slice, field_shape):
+        ndims = len(field_shape)
+
+        if ndims == 1:
+            field_size = field_shape[0]
+
+            size_diff = field_size - len(kernel_slice)
+
+            if size_diff != 0:
+                rest = int(np.floor(np.abs(size_diff) / 2.0))
+
+                if size_diff > 0:
+                    pad_width = [rest] * 2
+
+                    if size_diff % 2 != 0:
+                        pad_width[0] = pad_width[0] + 1
+
+                    kernel_slice = np.pad(kernel_slice,
+                                          pad_width,
+                                          'constant',
+                                          constant_values=0)
+                elif size_diff < 0:
+                    kernel_slice = kernel_slice[rest:rest+field_size]
+                    print("rest: " + str(rest))
+                    print("kernel slice: " + str(kernel_slice))
+
+            weights = np.zeros((field_size, field_size))
+
+            for i in range(field_size):
+                shift = i - int(np.floor(field_size/2.0))
+
+                weights[i, :] = self.shift_kernel_slice(kernel_slice, shift)
+                if self.border_type[0] == "circular":
+                    weights[i, :] = np.roll(kernel_slice, shift, axis=0)
+                elif self.border_type[0] == "zeros":
+                    weights[i, :] = shift_fill(kernel_slice, shift, fill_value=0)
+                else:
+                    weights[i, :] = self.shift_kernel_slice(kernel_slice, shift)
+
+
+        else:
+            raise ValueError("Error: Kernel not implemented for specified dimensionality.")
+
+        return weights
+
+    @abstractmethod
+    def shift_kernel_slice(self, kernel_slice, shift):
+        pass
 
 
 class SelectiveKernel(Kernel):
@@ -16,9 +69,9 @@ class SelectiveKernel(Kernel):
                  amp_exc=1.0,
                  width_exc=1.0,
                  center_exc=0.0,
-                 global_inh=1.0,
+                 global_inh=0.1,
                  border_type="inhibition"):
-        super.__init__(self)
+        super().__init__()
 
         if type(amp_exc) == float or type(amp_exc) == int:
             amp_exc = (amp_exc,)
@@ -29,13 +82,13 @@ class SelectiveKernel(Kernel):
         self.amp_exc = amp_exc
         self.width_exc = width_exc
         self.center_exc = center_exc
-        self.global_inh = global_inh
+        self.global_inh = global_inh if global_inh < 0 else -1 * global_inh
         self.border_type = border_type
 
     def estimate_domain_shape(self, field_domain, field_shape, center, width):
         sampling = (field_domain[:, 1] - field_domain[:, 0]) / field_shape[:]
         # estimate the shape of the kernel
-        kernel_shape = np.uint(np.ceil(2 * self.limit * width / sampling))
+        kernel_shape = 2 * np.array(field_shape)
         # ensure that the kernel has an odd size
         kernel_shape = np.where(kernel_shape % 2 == 0, kernel_shape + 1, kernel_shape)
 
@@ -63,6 +116,17 @@ class SelectiveKernel(Kernel):
                                  self.center_exc,
                                  self.width_exc)
 
+        kernel_slice = local_excitation + self.global_inh
+
+        self.weights = self.compute_weights(kernel_slice, field_shape)
+        self.mask = self.compute_mask(self.weights)
+
+    def shift_kernel_slice(self, kernel_slice, shift):
+        if self.border_type[0] == "inhibition":
+            return shift_fill(kernel_slice, shift, fill_value=self.global_inh)
+        else:
+            raise ValueError("Border type not implemented.")
+
 
 class MultiPeakKernel(Kernel):
     """A class that enables configuring a "Mexican hat" kernel
@@ -78,6 +142,7 @@ class MultiPeakKernel(Kernel):
                  center_inh=0.0,
                  limit=1.0,
                  border_type="zero"):
+        super().__init__()
 
         if type(amp_exc) == float or type(amp_exc) == int:
             amp_exc = (amp_exc,)
@@ -173,40 +238,8 @@ class MultiPeakKernel(Kernel):
         kernel_slice = local_excitation + mid_range_inhibition
         print("kernel slice: " + str(kernel_slice))
 
-        ndims = len(field_shape)
+        self.weights = self.compute_weights(kernel_slice, field_shape)
+        self.mask = self.compute_mask(self.weights)
 
-        if ndims == 1:
-            field_size = field_shape[0]
-            self.weights = np.zeros((field_size, field_size))
-
-            size_diff = field_size - len(kernel_slice)
-
-            if size_diff != 0:
-                rest = int(np.floor(np.abs(size_diff) / 2.0))
-
-                if size_diff > 0:
-                    pad_width = [rest] * 2
-
-                    if size_diff % 2 != 0:
-                        pad_width[0] = pad_width[0] + 1
-
-                    kernel_slice = np.pad(kernel_slice,
-                                          pad_width,
-                                          'constant',
-                                          constant_values=0)
-                elif size_diff < 0:
-                    kernel_slice = kernel_slice[rest:rest+field_size]
-                    print("rest: " + str(rest))
-                    print("kernel slice: " + str(kernel_slice))
-
-            for i in range(field_size):
-                shift = i - int(np.floor(field_size/2.0))
-
-                if self.border_type[0] == "circular":
-                    self.weights[i, :] = np.roll(kernel_slice, shift, axis=0)
-                elif self.border_type[0] == "zeros":
-                    self.weights[i, :] = shift_fill(kernel_slice, shift, fill_value=0)
-        else:
-            raise ValueError("Error: Kernel not implemented for specified dimensionality.")
-
-        self.mask = np.where(self.weights == 0, 0, 1)
+    def shift_kernel_slice(self, kernel_slice, shift):
+        raise ValueError("Border type not implemented.")
