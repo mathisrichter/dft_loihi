@@ -37,9 +37,9 @@ General questions
 - multi peak, sustained                                     WORKING
 - multi peak, sustained, repulsion
 - multi peak, sustained, tracking
-- selection, hysteresis
+- selection, hysteresis                                     WORKING
 - selection, sustained                                      WORKING
-- selection, sustained, tracking
+- selection, sustained, tracking                            WORKING
 
 2D
 ----------------

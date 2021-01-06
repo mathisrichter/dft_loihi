@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from collections.abc import Iterable
 import dft_loihi.dft.util
 from dft_loihi.dft.util import time_steps_per_minute
 from dft_loihi.dft.util import gauss
@@ -26,7 +27,7 @@ class PiecewiseStaticInput(dft_loihi.dft.util.Connectable):
         self.output = self.piecewise_static_input
 
     def add_gaussian_spike_rate(self, max_spike_rate, center, width, duration):
-        if type(center) == float or type(center) == int:
+        if not isinstance(center, Iterable):
             center = [center]
             width = [width]
 
