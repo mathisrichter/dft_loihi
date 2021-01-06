@@ -4,7 +4,10 @@ from dft_loihi.dft.util import gauss, shift_fill
 
 
 class Kernel(ABC):
-    def __init__(self):
+    def __init__(self, border_type="zeros"):
+        if type(border_type) == str:
+            border_type = [border_type]
+        self.border_type = border_type
         self.weights = None
         self.mask = None
 
@@ -42,14 +45,12 @@ class Kernel(ABC):
             for i in range(field_size):
                 shift = i - int(np.floor(field_size/2.0))
 
-                weights[i, :] = self.shift_kernel_slice(kernel_slice, shift)
                 if self.border_type[0] == "circular":
                     weights[i, :] = np.roll(kernel_slice, shift, axis=0)
                 elif self.border_type[0] == "zeros":
                     weights[i, :] = shift_fill(kernel_slice, shift, fill_value=0)
                 else:
                     weights[i, :] = self.shift_kernel_slice(kernel_slice, shift)
-
 
         else:
             raise ValueError("Error: Kernel not implemented for specified dimensionality.")
@@ -71,19 +72,17 @@ class SelectiveKernel(Kernel):
                  center_exc=0.0,
                  global_inh=0.1,
                  border_type="inhibition"):
-        super().__init__()
+        super().__init__(border_type)
 
         if type(amp_exc) == float or type(amp_exc) == int:
             amp_exc = (amp_exc,)
             width_exc = np.array([width_exc], dtype=np.float32)
             center_exc = np.array([center_exc], dtype=np.float32)
-            border_type = [border_type]
 
         self.amp_exc = amp_exc
         self.width_exc = width_exc
         self.center_exc = center_exc
         self.global_inh = global_inh if global_inh < 0 else -1 * global_inh
-        self.border_type = border_type
 
     def estimate_domain_shape(self, field_domain, field_shape, center, width):
         sampling = (field_domain[:, 1] - field_domain[:, 0]) / field_shape[:]
@@ -141,8 +140,8 @@ class MultiPeakKernel(Kernel):
                  width_inh=2.0,
                  center_inh=0.0,
                  limit=1.0,
-                 border_type="zero"):
-        super().__init__()
+                 border_type="zeros"):
+        super().__init__(border_type)
 
         if type(amp_exc) == float or type(amp_exc) == int:
             amp_exc = (amp_exc,)
@@ -151,7 +150,6 @@ class MultiPeakKernel(Kernel):
             width_inh = np.array([width_inh], dtype=np.float32)
             center_exc = np.array([center_exc], dtype=np.float32)
             center_inh = np.array([center_inh], dtype=np.float32)
-            border_type = [border_type]
 
         self.amp_exc = amp_exc
         self.width_exc = width_exc
@@ -160,7 +158,6 @@ class MultiPeakKernel(Kernel):
         self.width_inh = width_inh
         self.center_inh = center_inh
         self.limit = limit
-        self.border_type = border_type
 
         assert len(self.width_exc) == len(self.width_inh) and \
                len(self.center_exc) == len(self.center_inh), \
