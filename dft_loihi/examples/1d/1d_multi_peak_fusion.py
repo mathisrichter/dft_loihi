@@ -1,5 +1,3 @@
-import sys
-import numpy as np
 import nxsdk.net.net
 
 from dft_loihi.visualization.plotting import Plotter
@@ -7,10 +5,6 @@ from dft_loihi.dft.field import Field
 from dft_loihi.dft.kernel import MultiPeakKernel
 from dft_loihi.inputs.simulated_input import PiecewiseStaticInput
 from dft_loihi.dft.util import connect
-
-sys.path.append("/home/mathis/uni/diss/code/python/dft_loihi")
-sys.path.append("/home/mathis/uni/diss/code/python/nxsdk/0.9.9/nxsdk-0.9.9")
-
 
 timesteps = 500
 net = nxsdk.net.net.NxNet()
