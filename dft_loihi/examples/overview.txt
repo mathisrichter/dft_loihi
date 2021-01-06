@@ -35,7 +35,7 @@ General questions
 - multi peak, detection                                     WORKING
 - multi peak, peak fusion           
 - multi peak, sustained                                     WORKING
-- multi peak, sustained, repulsion
+- multi peak, sustained, repulsion                          WORKING
 - multi peak, sustained, tracking                           WORKING
 - selection, hysteresis                                     WORKING
 - selection, sustained                                      WORKING
