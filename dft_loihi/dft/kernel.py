@@ -37,8 +37,6 @@ class Kernel(ABC):
                                           constant_values=0)
                 elif size_diff < 0:
                     kernel_slice = kernel_slice[rest:rest+field_size]
-                    print("rest: " + str(rest))
-                    print("kernel slice: " + str(kernel_slice))
 
             weights = np.zeros((field_size, field_size))
 
@@ -105,9 +103,6 @@ class SelectiveKernel(Kernel):
                                                            field_shape,
                                                            self.center_exc,
                                                            self.width_exc)
-
-        print("domain exc: " + str(domain_exc))
-        print("shape exc: " + str(shape_exc))
 
         local_excitation = gauss(domain_exc,
                                  shape_exc,
@@ -185,24 +180,16 @@ class MultiPeakKernel(Kernel):
                                                            self.center_exc,
                                                            self.width_exc)
 
-        print("domain exc: " + str(domain_exc))
-        print("shape exc: " + str(shape_exc))
-
         local_excitation = gauss(domain_exc,
                                  shape_exc,
                                  self.amp_exc,
                                  self.center_exc,
                                  self.width_exc)
 
-        print("local excitation: " + str(local_excitation))
-
         domain_inh, shape_inh = self.estimate_domain_shape(field_domain,
                                                            field_shape,
                                                            self.center_inh,
                                                            self.width_inh)
-
-        print("domain inh: " + str(domain_inh))
-        print("shape inh: " + str(shape_inh))
 
         mid_range_inhibition = gauss(domain_inh,
                                      shape_inh,
@@ -210,12 +197,9 @@ class MultiPeakKernel(Kernel):
                                      self.center_inh,
                                      self.width_inh)
 
-        print("mid range inhibition: " + str(mid_range_inhibition))
-
         # pad the smaller array with zeros so that they have the same size
         shape_diff = np.array(mid_range_inhibition.shape) - np.array(local_excitation.shape)
 
-        print("shape diff: " + str(shape_diff))
         for i, diff in enumerate(shape_diff):
             if diff > 0:
                 pad_width = np.zeros((local_excitation.ndim,) + (2,), dtype=np.int32)
@@ -233,7 +217,6 @@ class MultiPeakKernel(Kernel):
                                               constant_values=0)
 
         kernel_slice = local_excitation + mid_range_inhibition
-        print("kernel slice: " + str(kernel_slice))
 
         self.weights = self.compute_weights(kernel_slice, field_shape)
         self.mask = self.compute_mask(self.weights)
