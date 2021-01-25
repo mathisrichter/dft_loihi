@@ -7,12 +7,17 @@ from dft_loihi.dft.util import gauss
 
 
 class PiecewiseStaticInput(dft_loihi.dft.util.Connectable):
-    def __init__(self, name, net, domain, shape):
+    def __init__(self, name, net, shape, domain=None):
         self.name = name
 
         if type(shape) == int:
-            domain = np.array([domain], dtype=np.int32)
             shape = (shape,)
+            if domain is not None:
+                domain = np.array([domain], dtype=np.float32)
+
+        if domain is None:
+            domain = np.zeros((len(shape), 2), dtype=np.float32)
+            domain[:, 1] = shape[:]
 
         self.domain = domain
         self.shape = shape
@@ -26,7 +31,27 @@ class PiecewiseStaticInput(dft_loihi.dft.util.Connectable):
         # for connections
         self.output = self.piecewise_static_input
 
-    def add_gaussian_spike_rate(self, max_spike_rate, center, width, duration):
+    def create(self):
+        """Creates the overall time course of the input.
+        Make sure to only call this once you have added all phases of input with the add_input_phase() function."""
+
+        for i in range(self.number_of_neurons):
+            spike_times = np.nonzero(self.spikes[i, :])[0].tolist()
+            self.spike_times.append(spike_times)
+            self.piecewise_static_input.addSpikes(spikeInputPortNodeIds=i,
+                                                  spikeTimes=spike_times)
+
+        self.number_of_time_steps = np.size(self.spikes, axis=1)
+
+class GaussPiecewiseStaticInput(PiecewiseStaticInput):
+    def __init__(self):
+        super().__init__()
+        pass
+
+    def add_spike_rate(self, max_spike_rate, center, width, duration):
+        """Spike rate is in Hz (spikes per minute)
+        center and width refer to the domain of the field
+        duration is in time steps"""
         if not isinstance(center, Iterable):
             center = [center]
             width = [width]
@@ -49,17 +74,22 @@ class PiecewiseStaticInput(dft_loihi.dft.util.Connectable):
 
         self.spikes = np.append(self.spikes, spikes, axis=1)
 
-    def create(self):
-        """Creates the overall time course of the input.
-        Make sure to only call this once you have added all phases of input with the add_input_phase() function."""
 
-        for i in range(self.number_of_neurons):
-            spike_times = np.nonzero(self.spikes[i, :])[0].tolist()
-            self.spike_times.append(spike_times)
-            self.piecewise_static_input.addSpikes(spikeInputPortNodeIds=i,
-                                                  spikeTimes=spike_times)
+class HomogeneousPiecewiseStaticInput(PiecewiseStaticInput):
+    def __init__(self):
+        super().__init__()
+        pass
 
-        self.number_of_time_steps = np.size(self.spikes, axis=1)
+    def add_homogeneous_spike_rate(self, spike_rate, duration):
+            """Spike rate is in Hz (spikes per minute)."""
+        spike_rate_per_time_step = spike_rate / time_steps_per_minute
+
+        spikes = np.random.poisson(spike_rate_per_time_step, (self.number_of_neurons, duration))
+        spikes = np.where(spikes > 0, 1, spikes)
+
+        self.spikes = np.append(self.spikes, spikes, axis=1)
+
+
 
 # TODO merge this into PiecewiseStaticInput
 class SimulatedInput(dft_loihi.dft.util.Connectable):
