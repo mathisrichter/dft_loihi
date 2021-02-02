@@ -1,66 +1,71 @@
-import numpy as np
-import nxsdk
-import dft_loihi
-import dft_loihi.dft.util
+import matplotlib.pyplot as plt
+from lava.processes.n3.compartments import Compartments
+from lava.core.generic.process import Process
+from lava.core.generic.variable import InVar, OutVar
+from dft_loihi.dft.util import tau_to_decay
+from dft_loihi.dft.util import connect
 
-class Node(dft_loihi.dft.util.Connectable):
+
+class Node(Process):
     """A population of neurons that acts as a single dynamical node."""
+    def _build(self, **kwargs):
+        self.node_name = kwargs.pop("node_name")
+        self.size = kwargs.pop("number_of_neurons", 1)
+        tau_voltage = kwargs.pop("tau_voltage", 1)
+        tau_current = kwargs.pop("tau_current", 1)
+        threshold = kwargs.pop("threshold", 100)
+        self_excitation = kwargs.pop("self_excitation", 0.0)
+        bias_mant = kwargs.pop("bias_mant", 1000)
+        bias_exp = kwargs.pop("bias_exp", 2)
 
-    def __init__(
-            self,
-            name,
-            net,
-            number_of_neurons=1,
-            tau_voltage=1,
-            tau_current=1,
-            threshold=100,
-            self_excitation=0.0,
-            with_probes=True,
-            biasMant=0,
-            biasExp=0):
-        """Constructor
-        
-        Parameters:
-        name --- A string that describes the node.
-        net --- The nxsdk network object required to create the neurons.
-        number_of_neurons --- Number of neurons to use for a single node.
-        self_excitation --- Synaptic weight connecting the node to itself.
-        with_probes --- Setting this flag to True will set up probes for the current, voltage, and spikes of all neurons.
-        """
-        super().__init__()
-        self.name = name
-        self.number_of_neurons = number_of_neurons
-        self.threshold = threshold
-                
-        compartment_prototype = nxsdk.net.nodes.compartments.CompartmentPrototype(
-                              vThMant=self.threshold,
-                              compartmentVoltageDecay=dft_loihi.dft.util.decay(tau_voltage),
-                              compartmentCurrentDecay=dft_loihi.dft.util.decay(tau_current),
-                              enableNoise=0,
-                              refractoryDelay=1,
-                              biasMant=biasMant,
-                              biasExp=biasExp,
-                              functionalState=nxsdk.api.enums.api_enums.COMPARTMENT_FUNCTIONAL_STATE.IDLE)
+        self.neurons = Compartments(
+            name=self.node_name,
+            num_compartments=self.size,
+            voltage_decay=tau_to_decay(tau_voltage),
+            current_decay=tau_to_decay(tau_current),
+            refractory_delay=1,
+            threshold=threshold,
+            bias_mant=bias_mant,
+            bias_exp=bias_exp)
 
-        self.neurons = net.createCompartmentGroup(size=self.number_of_neurons, prototype=compartment_prototype)
-        self.input = self.neurons
-        self.output = self.neurons
-        
-        if (self_excitation > 0.001):
-            dft_loihi.dft.util.connect(self, self, self_excitation, mask="full")
-#            connection_prototype_recurrent = nxsdk.net.nodes.connections.ConnectionPrototype(weight=self_excitation * self.threshold)
-#            self.neurons.connect(self.neurons, prototype=connection_prototype_recurrent, connectionMask=np.ones((self.number_of_neurons, self.number_of_neurons)))
-        
-        if (with_probes):
-            self.setup_probes()
-    
-        self.visualization = None
- 
-    def setup_probes(self):
-        (self.probe_current, self.probe_voltage, self.probe_spikes) = self.neurons.probe(
-                 [nxsdk.api.enums.api_enums.ProbeParameter.COMPARTMENT_CURRENT,
-                  nxsdk.api.enums.api_enums.ProbeParameter.COMPARTMENT_VOLTAGE,
-                  nxsdk.api.enums.api_enums.ProbeParameter.SPIKE])
+        self.a_in = InVar.from_var(self.neurons.a_in)
+        self.s_out = OutVar.from_var(self.neurons.s_out)
 
-    def weight_transform(self, weight):
-        return weight * self.threshold
+        if self_excitation > 0:
+            connect(self, self, self_excitation, mask="full")
+
+        return kwargs
+
+    def build_probes(self, buffer_size):
+        self.probe_current = self.neurons.probe('current', [0], buffer_size=buffer_size)
+        self.probe_voltage = self.neurons.probe('voltage', [0], buffer_size=buffer_size)
+        self.probe_spikes = self.neurons.probe('s_out', [0], buffer_size=buffer_size)
+
+    def plot(self):
+        fig = plt.figure(figsize=(18, 10))
+        fig.suptitle(self.node_name)
+
+        ax0 = plt.subplot(3, 1, 1)
+        self.probe_current.plot()
+        plt.xlabel('Time steps')
+        plt.ylabel('Current')
+        plt.title('Current')
+
+        ax1 = plt.subplot(3, 1, 2)
+        self.probe_voltage.plot()
+        plt.xlabel('Time steps')
+        plt.ylabel('Voltage')
+        plt.title('Voltage')
+
+        ax2 = plt.subplot(3, 1, 3)
+        self.probe_spikes.plot()
+        plt.xlabel('Time steps')
+        plt.ylabel('Neuron index')
+        plt.title('Spikes')
+        plt.ylim(0, self.size)
+
+        ax1.set_xlim(ax0.get_xlim())
+        ax2.set_xlim(ax0.get_xlim())
+
+        plt.tight_layout()
+        plt.show()

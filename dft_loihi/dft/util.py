@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.stats
-import nxsdk
+from lava.processes.n3.connections import Connections
 
 
 ms_per_time_step = 10
@@ -9,8 +9,30 @@ time_steps_per_second = 1000 * time_steps_per_ms
 time_steps_per_minute = 60 * time_steps_per_second
 
 
-def decay(tau):
+def tau_to_decay(tau):
     return int(4095 / tau)
+
+
+def connect(source, target, weights, mask="one-to-one"):
+
+    if isinstance(weights, int) or isinstance(weights, float):
+        weights = np.asarray([weights])
+    elif isinstance(weights, list):
+        weights = np.asarray(weights)
+
+    if type(mask) == str:
+        if mask == "full":
+            mask = np.full((source.size, target.size), 1.0)
+        elif mask == "one-to-one":
+            mask = np.eye(source.size, target.size)
+
+    connections = Connections(name='conn',
+                              conn_mask=mask,
+                              wgts=weights,
+                              sign_mode=2)
+
+    connections(s_pre=source.s_out)
+    target(a_in=connections.a)
 
 
 # preallocate empty array and assign slice by chrisaycock
@@ -77,45 +99,3 @@ def gauss(domain, shape, amplitude=1.0, mean=None, stddev=None):
 
     return result
 
-
-class Connectable:
-    def __init__(self):
-        self.input = None
-        self.output = None
-
-    def weight_transform(self, weight):
-        return weight
-
-
-def connect(source, target, weight, mask="one-to-one"):
-    if isinstance(source, nxsdk.net.groups.CompartmentGroup):
-        source_output = source
-        source_num_neurons = source.size
-    else:
-        source_output = source.output
-        source_num_neurons = source.number_of_neurons
-
-    if isinstance(weight, int) or isinstance(weight, float):
-        weight = np.asarray([weight])
-    elif isinstance(weight, list):
-        weight = np.asarray(weight)
-
-    if isinstance(target, nxsdk.net.groups.CompartmentGroup):
-        target_input = target
-        target_num_neurons = target.size
-    else:
-        target_input = target.input
-        target_num_neurons = target.number_of_neurons
-        weight = target.weight_transform(weight)
-
-    if type(mask) == str:
-        if mask == "full":
-            mask = np.full((source_num_neurons, target_num_neurons), 1.0)
-        elif mask == "one-to-one":
-            mask = np.eye(source_num_neurons, target_num_neurons)
-
-    prototype = nxsdk.net.nodes.connections.ConnectionPrototype()
-    source_output.connect(target_input,
-                          prototype=prototype,
-                          weight=weight,
-                          connectionMask=mask)

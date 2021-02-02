@@ -1,40 +1,32 @@
-import nxsdk.net.net
-
-from dft_loihi.visualization.plotting import Plotter
+from lava.core.generic.process import Process
+from lava.core.generic.enums import Backend
 from dft_loihi.dft.node import Node
-from dft_loihi.inputs.simulated_input import SimulatedInput
-from dft_loihi.dft.util import connect
 
 
-timesteps = 500
-neurons_per_node = 1
+class Architecture(Process):
+    def _build(self, **kwargs):
+        self.neurons_per_node = kwargs.pop("neurons_per_node", 1)
+        self.time_steps = kwargs.pop("time_steps")
 
-net = nxsdk.net.net.NxNet()
+        self.node = Node(node_name="node",
+                         number_of_neurons=self.neurons_per_node,
+                         tau_voltage=2,
+                         tau_current=10,
+                         self_excitation=100)
 
-### setup the network
-simulated_input = SimulatedInput("input", net, neurons_per_node, timesteps)
-simulated_input.add_input_phase_spike_rate(100, 0.0)
-simulated_input.add_input_phase_spike_rate(100, 40)
-simulated_input.add_input_phase_spike_rate(100, 50)
-simulated_input.add_input_phase_spike_rate(100, 40)
-simulated_input.add_input_phase_spike_rate(100, 0.0)
-simulated_input.create_input()
+        self.build_probes()
 
-node = Node("node",
-            net,
-            number_of_neurons=neurons_per_node,
-            tau_voltage=2,
-            tau_current=10,
-            self_excitation=0.08)
+        return kwargs
 
-connect(simulated_input, node, 0.5, mask="one-to-one")
+    def build_probes(self):
+        self.node.build_probes(buffer_size=self.time_steps)
 
-### run the network
-net.run(timesteps)
-net.disconnect()
+    def plot(self):
+        self.node.plot()
 
-### plot results
-plotter = Plotter()
-plotter.add_input_plot(simulated_input)
-plotter.add_field_plot(node)
-plotter.plot()
+
+if __name__ == "__main__":
+    time_steps = 200
+    net = Architecture(neurons_per_node=1, time_steps=time_steps)
+    net.run(time_steps, backend=Backend.TF)
+    net.plot()
