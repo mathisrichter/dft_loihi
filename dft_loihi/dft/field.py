@@ -46,7 +46,6 @@ class Field(dft_loihi.dft.util.Connectable):
 
         if (kernel is not None):
             kernel.create(self.domain, self.shape)
-            print("kernel: " + str(kernel.weights))
             dft_loihi.dft.util.connect(self, self, kernel.weights, mask=kernel.mask)
 
         if (with_probes):

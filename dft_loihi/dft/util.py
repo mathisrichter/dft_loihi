@@ -110,9 +110,9 @@ def connect(source, target, weight, mask="one-to-one"):
 
     if type(mask) == str:
         if mask == "full":
-            mask = np.full((source_num_neurons, target_num_neurons), 1.0)
+            mask = np.full((target_num_neurons, source_num_neurons), 1.0)
         elif mask == "one-to-one":
-            mask = np.eye(source_num_neurons, target_num_neurons)
+            mask = np.eye(target_num_neurons, source_num_neurons)
 
     prototype = nxsdk.net.nodes.connections.ConnectionPrototype()
     source_output.connect(target_input,

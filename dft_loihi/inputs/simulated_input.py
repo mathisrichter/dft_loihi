@@ -7,19 +7,12 @@ from dft_loihi.dft.util import gauss
 
 
 class PiecewiseStaticInput(dft_loihi.dft.util.Connectable):
-    def __init__(self, name, net, shape, domain=None):
+    def __init__(self, name, net, shape):
         self.name = name
 
         if type(shape) == int:
             shape = (shape,)
-            if domain is not None:
-                domain = np.array([domain], dtype=np.float32)
 
-        if domain is None:
-            domain = np.zeros((len(shape), 2), dtype=np.float32)
-            domain[:, 1] = shape[:]
-
-        self.domain = domain
         self.shape = shape
         self.number_of_neurons = int(np.prod(self.shape))
         self.piecewise_static_input = net.createSpikeGenProcess(numPorts=self.number_of_neurons)
@@ -43,10 +36,21 @@ class PiecewiseStaticInput(dft_loihi.dft.util.Connectable):
 
         self.number_of_time_steps = np.size(self.spikes, axis=1)
 
+
 class GaussPiecewiseStaticInput(PiecewiseStaticInput):
-    def __init__(self):
-        super().__init__()
-        pass
+    def __init__(self, name, net, shape, domain=None):
+        super().__init__(name, net, shape)
+
+        if type(shape) == int:
+            shape = (shape,)
+            if domain is not None:
+                domain = np.array([domain], dtype=np.float32)
+
+        if domain is None:
+            domain = np.zeros((len(shape), 2), dtype=np.float32)
+            domain[:, 1] = shape[:]
+
+        self.domain = domain
 
     def add_spike_rate(self, max_spike_rate, center, width, duration):
         """Spike rate is in Hz (spikes per minute)
@@ -76,12 +80,11 @@ class GaussPiecewiseStaticInput(PiecewiseStaticInput):
 
 
 class HomogeneousPiecewiseStaticInput(PiecewiseStaticInput):
-    def __init__(self):
-        super().__init__()
-        pass
+    def __init__(self, name, net, shape):
+        super().__init__(name, net, shape)
 
-    def add_homogeneous_spike_rate(self, spike_rate, duration):
-            """Spike rate is in Hz (spikes per minute)."""
+    def add_spike_rate(self, spike_rate, duration):
+        """Spike rate is in Hz (spikes per minute)."""
         spike_rate_per_time_step = spike_rate / time_steps_per_minute
 
         spikes = np.random.poisson(spike_rate_per_time_step, (self.number_of_neurons, duration))
@@ -178,3 +181,5 @@ class SimulatedInput(dft_loihi.dft.util.Connectable):
         self.add_input_phase_on_off(length_on, on=True)
         self.add_input_phase_on_off(length-(start_on-1)-length_on, on=False)
         self.create_input()
+
+

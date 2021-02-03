@@ -65,7 +65,7 @@ General questions
 
 COUPLING
 ----------------
-- 0D to 1D, boost                   
+- 0D to 1D, boost                                           WORKING
 - 0D to 1D, boost, biased           
 - 0D to 1D, patterned, concept      
 - 0D to 2D, boost
